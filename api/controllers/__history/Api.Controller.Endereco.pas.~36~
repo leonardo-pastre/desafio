@@ -1,0 +1,260 @@
+unit Api.Controller.Endereco;
+
+interface
+
+uses
+  Horse,
+  Horse.GBSwagger.Register,
+  Horse.GBSwagger.Controller,
+  GBSwagger.Path.Register,
+  GBSwagger.Path.Attributes,
+  System.JSON,
+  System.SysUtils,
+  System.Net.HttpClient,
+  System.Net.HttpClientComponent;
+
+type
+  [SwagPath('Endereço')]
+  TControllerEndereco = class(THorseGBSwagger)
+  private
+    function ValidarCEP(ACEP: string): Boolean;
+    function TemApenasNumeros(ADado: string): Boolean;
+    function ViaCEP(ACEP: string; out ADados: string): Boolean;
+    function ApiCEP(ACEP: string; out ADados: string): Boolean;
+    function AwesomeApi(ACEP: string; out ADados: string): Boolean;
+    function FormatarDadosViaCEP(ADados: string): string;
+    function FormatarDadosApiCEP(ADados: string): string;
+    function FormatarDadosAwesomeApi(ADados: string): string;
+  public
+
+    [SwagGET('endereco/{cep}', 'Consultar o endereço cadastrado')]
+    [SwagParamPath('cep', 'CEP a ser consultado')]
+    [SwagResponse(200)]
+    [SwagResponse(400)]
+    [SwagResponse(404)]
+    procedure Consultar;
+  end;
+
+procedure EnderecoRegistry;
+
+const
+  NUMERO_DIGITOS_CEP = 8;
+
+implementation
+
+{ TControllerEndereco }
+
+procedure EnderecoRegistry;
+begin
+  //THorse.Get('/v1/endereco/:cep', ConsultarCEP);
+  THorseGBSwaggerRegister.RegisterPath(TControllerEndereco);
+end;
+
+procedure TControllerEndereco.Consultar;
+var
+  CEP: string;
+  Dados: string;
+  Retorno: TJSONObject;
+begin
+  CEP := FRequest.Params.Items['cep'];
+
+  if not ValidarCEP(CEP) then
+  begin
+    FResponse.Send(TJSONObject.Create(TJSONPair.Create('erro', 'CEP Inválido'))).Status(THTTPStatus.BadRequest);
+    Exit;
+  end;
+
+  if not ViaCEP(CEP, Dados) then
+    if not ApiCEP(CEP, Dados) then
+      if not AwesomeApi(CEP, Dados) then
+      begin
+        FResponse.Send(TJSONObject.Create(TJSONPair.Create('erro', 'Erro ao obter o endereço correspondente'))).Status(THTTPStatus.NotFound);
+        Exit;
+      end;
+
+  try
+    Retorno := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetBytes(Dados), 0) as TJSONObject;
+    FResponse.Send<TJSONObject>(Retorno).Status(THTTPStatus.OK);
+  except
+    on E: Exception do
+      FResponse.Send(TJSONObject.Create(TJSONPair.Create('erro', E.Message))).Status(THTTPStatus.InternalServerError);
+  end;
+end;
+
+function TControllerEndereco.ValidarCEP(ACEP: string): Boolean;
+begin
+  Result := (Trim(ACEP) <> '') and
+            (Length(ACEP) = NUMERO_DIGITOS_CEP) and
+            TemApenasNumeros(ACEP);
+end;
+
+function TControllerEndereco.TemApenasNumeros(ADado: string): Boolean;
+var
+  I: Integer;
+begin
+  Result := True;
+
+  for I := Low(ADado) to High(ADado) do
+  begin
+    if not CharInSet(ADado[I], ['0'..'9']) then
+    begin
+      Result := False;
+      Break;
+    end;
+  end;
+end;
+
+function TControllerEndereco.ViaCEP(ACEP: string; out ADados: string): Boolean;
+var
+  LClient: TNetHTTPClient;
+  LResponse: IHTTPResponse;
+  LRetorno: string;
+begin
+  Result := False;
+  LClient := TNetHTTPClient.Create(nil);
+
+  try
+    try
+      LResponse := LClient.Get('https://viacep.com.br/ws/' + ACEP + '/json/');
+      LRetorno := LResponse.ContentAsString(TEncoding.UTF8);
+      
+      if (LResponse.StatusCode <> 200) or (LowerCase(LRetorno).Contains('"erro":')) then
+      begin
+        Exit;
+      end;
+        
+      ADados := FormatarDadosViaCEP(LRetorno);
+      Result := True;
+    except
+      on E: Exception do
+      begin
+        // grava no log
+      end;
+    end;
+  finally
+    FreeAndNil(LClient);
+  end;
+end;
+
+function TControllerEndereco.ApiCEP(ACEP: string; out ADados: string): Boolean;
+var
+  LClient: TNetHTTPClient;
+  LResponse: IHTTPResponse;
+  LRetorno: string;
+begin
+  Result := False;
+  LClient := TNetHTTPClient.Create(nil);
+
+  try
+    try
+      LResponse := LClient.Get('https://ws.apicep.com/cep/' + ACEP + '.json');
+      LRetorno := LResponse.ContentAsString(TEncoding.UTF8);
+      
+      if (LResponse.StatusCode <> 200) or (LowerCase(LRetorno).Contains('"ok":false')) then
+      begin
+        Exit;
+      end;
+        
+      ADados := FormatarDadosViaCEP(LRetorno);
+      Result := True;
+    except
+      on E: Exception do
+      begin
+        // grava no log
+      end;
+    end;
+  finally
+    FreeAndNil(LClient);
+  end;
+end;
+
+function TControllerEndereco.AwesomeApi(ACEP: string; out ADados: string): Boolean;
+var
+  LClient: TNetHTTPClient;
+  LResponse: IHTTPResponse;
+  LRetorno: string;
+begin
+  Result := False;
+  LClient := TNetHTTPClient.Create(nil);
+
+  try
+    try
+      LResponse := LClient.Get('https://cep.awesomeapi.com.br/json/' + ACEP);
+      LRetorno := LResponse.ContentAsString(TEncoding.UTF8);
+      
+      if (LResponse.StatusCode <> 200) or (LowerCase(LRetorno).Contains('"erro":')) then
+      begin
+        Exit;
+      end;
+        
+      ADados := FormatarDadosViaCEP(LRetorno);
+      Result := True;
+    except
+      on E: Exception do
+      begin
+        // grava no log
+      end;
+    end;
+  finally
+    FreeAndNil(LClient);
+  end;
+end;
+
+function TControllerEndereco.FormatarDadosViaCEP(ADados: string): string;
+var
+  LJSONRetorno: TJSONObject;
+  LJSONEndereco: TJSONObject;
+begin
+  LJSONEndereco := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetBytes(ADados), 0) as TJSONObject;
+
+  LJSONRetorno := TJSONObject.Create;
+
+  LJSONRetorno.AddPair('cep',LJSONEndereco.GetValue<string>('cep'));
+  LJSONRetorno.AddPair('logradouro',LJSONEndereco.GetValue<string>('logradouro'));
+  LJSONRetorno.AddPair('complemento',LJSONEndereco.GetValue<string>('complemento'));
+  LJSONRetorno.AddPair('bairro',LJSONEndereco.GetValue<string>('bairro'));
+  LJSONRetorno.AddPair('cidade',LJSONEndereco.GetValue<string>('localidade'));
+  LJSONRetorno.AddPair('uf',LJSONEndereco.GetValue<string>('uf'));
+
+  Result := LJSONRetorno.ToString;
+end;
+
+function TControllerEndereco.FormatarDadosApiCEP(ADados: string): string;
+var
+  LJSONRetorno: TJSONObject;
+  LJSONEndereco: TJSONObject;
+begin
+  LJSONEndereco := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetBytes(ADados), 0) as TJSONObject;
+
+  LJSONRetorno := TJSONObject.Create;
+
+  LJSONRetorno.AddPair('cep',LJSONEndereco.GetValue<string>('code'));
+  LJSONRetorno.AddPair('logradouro',LJSONEndereco.GetValue<string>('address'));
+  LJSONRetorno.AddPair('complemento','');
+  LJSONRetorno.AddPair('bairro',LJSONEndereco.GetValue<string>('district'));
+  LJSONRetorno.AddPair('cidade',LJSONEndereco.GetValue<string>('city'));
+  LJSONRetorno.AddPair('uf',LJSONEndereco.GetValue<string>('state'));
+
+  Result := LJSONRetorno.ToString;
+end;
+
+function TControllerEndereco.FormatarDadosAwesomeApi(ADados: string): string;
+var
+  LJSONRetorno: TJSONObject;
+  LJSONEndereco: TJSONObject;
+begin
+  LJSONEndereco := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetBytes(ADados), 0) as TJSONObject;
+
+  LJSONRetorno := TJSONObject.Create;
+
+  LJSONRetorno.AddPair('cep',LJSONEndereco.GetValue<string>('cep'));
+  LJSONRetorno.AddPair('logradouro',LJSONEndereco.GetValue<string>('address'));
+  LJSONRetorno.AddPair('complemento','');
+  LJSONRetorno.AddPair('bairro',LJSONEndereco.GetValue<string>('district'));
+  LJSONRetorno.AddPair('cidade',LJSONEndereco.GetValue<string>('city'));
+  LJSONRetorno.AddPair('uf',LJSONEndereco.GetValue<string>('state'));
+
+  Result := LJSONRetorno.ToString;
+end;
+
+end.

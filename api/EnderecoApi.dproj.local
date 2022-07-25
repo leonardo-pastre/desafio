@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2022/07/23 17:39:29.000.136,C:\Users\Léo\Documents\desafio-totvs\api\api.dproj=C:\Users\Léo\Documents\Embarcadero\Studio\Projects\Project1.dproj</Transaction>
+    <Transaction>2022/07/23 17:45:04.000.308,=C:\Users\Léo\Documents\desafio-totvs\api\Unit1.pas</Transaction>
+    <Transaction>2022/07/23 17:45:56.000.158,C:\Users\Léo\Documents\desafio-totvs\api\Unit1.pas=C:\Users\Léo\Documents\desafio-totvs\api\controllers\Api.Controller.Endereco.pas</Transaction>
+    <Transaction>2022/07/25 13:35:53.564,C:\Users\Léo\Documents\desafio-totvs\api\EnderecoApi.dproj=C:\Users\Léo\Documents\desafio-totvs\api\api.dproj</Transaction>
+  </Transactions>
+</BorlandProject>

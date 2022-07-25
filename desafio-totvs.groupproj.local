@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2022/07/23 17:38:44.000.874,C:\Users\Léo\Documents\Embarcadero\Studio\Projects\ProjectGroup1.groupproj=C:\Users\Léo\Documents\desafio-totvs\desafio-totvs.groupproj</Transaction>
+  </Transactions>
+	<Default.Personality>
+		<Projects ActiveProject="C:\Users\Léo\Documents\desafio-totvs\api\api.dproj"/>
+	</Default.Personality>
+</BorlandProject>
